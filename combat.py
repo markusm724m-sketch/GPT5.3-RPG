@@ -69,7 +69,7 @@ class CombatSystem:
             if dead:
                 player.gain_exp(20)
         if hit > 0:
-            return {"type": "combat", "text": f"Melee slash hit {hit} target(s)!"}
+            return {"type": "combat", "text": f"Удар в ближнем бою поразил целей: {hit}."}
         return None
 
     def cast_projectile(self, player, kind: str, particles, power_mult: float = 1.0) -> bool:
@@ -110,7 +110,8 @@ class CombatSystem:
             if not collided:
                 kept.append(p)
             else:
-                logs.append({"type": "combat", "text": f"{p.kind.title()} exploded!"})
+                spell = "Огненный шар" if p.kind == "fireball" else p.kind.replace("_", " ").title()
+                logs.append({"type": "combat", "text": f"{spell} взорвался!"})
         self.projectiles = kept
         return logs
 

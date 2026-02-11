@@ -6,6 +6,7 @@ import random
 
 import pygame
 
+from localization import localize_role
 from world import TILE_SIZE
 
 
@@ -61,7 +62,7 @@ class BuildingSystem:
             entities.entities.append(new_ent)
             self.settlers.append({"x": sx, "y": sy, "role": role})
             player.reputation += 2
-            return {"type": "settle", "text": f"A new {role} settled in your base!"}
+            return {"type": "settle", "text": f"Новый житель прибыл на базу: {localize_role(role)}."}
         return None
 
     def draw_preview(self, surface: pygame.Surface, camera, world, mouse_pos: tuple[int, int]) -> None:

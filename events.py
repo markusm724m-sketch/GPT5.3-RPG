@@ -6,6 +6,7 @@ import random
 from dataclasses import dataclass
 
 from content_pack import BIOME_THEMES, EVENT_INTROS, QUEST_OBJECTIVES, QUEST_REWARDS, WORLD_FLAVOR_LINES
+from localization import localize_biome
 
 
 @dataclass
@@ -66,14 +67,15 @@ class EventSystem:
         )
         diff = max(1, player_level + self.rng.randint(-1, 3))
         timer = self.rng.uniform(50, 130)
+        biome_name = localize_biome(biome)
 
         if etype == "raid":
-            variant = self.rng.choice(["bandit raid", "monster wave", "demon invasion"])
+            variant = self.rng.choice(["Набег бандитов", "Волна монстров", "Вторжение демонов"])
             reward = {"exp": 25 + diff * 8, "rep": 2 + diff // 2, "items": [("gold", 2 + diff)]}
             return self._new_event(
                 "raid",
-                f"{variant.title()} near {biome}",
-                f"Defend nearby settlers from {variant}.",
+                f"{variant} у биома {biome_name}",
+                f"Защити ближайших поселенцев от угрозы: {variant.lower()}.",
                 biome,
                 diff,
                 reward,
@@ -93,8 +95,8 @@ class EventSystem:
             }
             return self._new_event(
                 "quest",
-                f"Quest: {variant}",
-                f"{intro} Objective at {location}. Potential reward includes {reward_name}.",
+                f"Квест: {variant}",
+                f"{intro} Локация: {location}. Возможная награда: {reward_name}.",
                 biome,
                 diff,
                 reward,
@@ -104,9 +106,9 @@ class EventSystem:
 
         if etype == "world":
             variant = self.rng.choice([
-                "meteor shower",
-                "ancient ruin appears",
-                "merchant caravan attacked",
+                "метеоритный дождь",
+                "появились древние руины",
+                "караван торговцев атакован",
             ])
             reward = {
                 "exp": 20 + diff * 6,
@@ -115,8 +117,8 @@ class EventSystem:
             }
             return self._new_event(
                 "world",
-                f"World Event: {variant}",
-                f"The world shifts: {variant}. Go explore the area.",
+                f"Мировое событие: {variant}",
+                f"Мир меняется: {variant}. Исследуй этот район.",
                 biome,
                 diff,
                 reward,
@@ -125,17 +127,17 @@ class EventSystem:
             )
 
         twist = self.rng.choice([
-            "gate to modern world opens briefly",
-            "god offers blessing or curse",
-            "rival isekai hero appears",
+            "на миг открылись врата в современный мир",
+            "бог предлагает благословение или проклятие",
+            "появился герой-соперник из исекая",
         ])
         reward = {"exp": 45 + diff * 7, "rep": self.rng.randint(-2, 5), "items": [("gold", 4 + diff)]}
         if is_night:
             reward["items"].append(("core", 1 + diff // 2))
         return self._new_event(
             "isekai",
-            f"Isekai Twist: {twist}",
-            "Reality bends around your destiny. Choose action before timer ends.",
+            f"Поворот исекая: {twist}",
+            "Реальность изгибается вокруг твоей судьбы. Выбери действие до конца таймера.",
             biome,
             diff,
             reward,
@@ -148,7 +150,7 @@ class EventSystem:
             if self.rng.random() < 0.5 and world.player_blocks:
                 key = self.rng.choice(list(world.player_blocks.keys()))
                 world.remove_player_block(*key)
-                return "Raid damaged a base wall."
+                return "Набег повредил стену базы."
             from entities import BaseEntity
 
             for _ in range(min(5, 1 + event.difficulty // 2)):
@@ -163,24 +165,24 @@ class EventSystem:
                         radius=11,
                     )
                 )
-            return "Monster forces entered the region."
+            return "Силы монстров вошли в регион."
 
-        if event.etype == "world" and "ruin" in event.title.lower():
+        if event.etype == "world" and "руин" in event.title.lower():
             tx = self.rng.randint(-30, 30)
             ty = self.rng.randint(-30, 30)
             for oy in range(-2, 3):
                 for ox in range(-2, 3):
                     world.place_player_block(tx + ox, ty + oy, "wall")
-            return "Ancient ruin formed a mysterious structure."
+            return "Древние руины сформировали таинственную структуру."
 
-        if event.etype == "isekai" and "blessing" in event.title.lower():
+        if event.etype == "isekai" and "благослов" in event.title.lower():
             if self.rng.random() < 0.5:
                 entities.faction_relations[("player", "villagers")] = entities.faction_relations.get(("player", "villagers"), 0) + 10
-                return "Blessing improved villagers' trust in you."
+                return "Благословение усилило доверие жителей к тебе."
             entities.faction_relations[("player", "monsters")] = entities.faction_relations.get(("player", "monsters"), -80) - 10
-            return "Curse made monsters more aggressive."
+            return "Проклятие сделало монстров более агрессивными."
 
-        return "The world subtly changed."
+        return "Мир незаметно изменился."
 
     def complete_event(self, event_id: int, player, world, entities) -> str | None:
         for event in self.active_events:
@@ -197,8 +199,8 @@ class EventSystem:
                 if event.chain_tag == "defense" and self.rng.random() < 0.55:
                     follow = self._new_event(
                         "quest",
-                        "Grateful Village Request",
-                        "Villagers ask you to escort a supply cart through dangerous roads.",
+                        "Просьба благодарной деревни",
+                        "Жители просят сопроводить повозку с припасами по опасной дороге.",
                         event.biome,
                         max(1, event.difficulty),
                         {"exp": 45, "rep": 4, "items": [("gold", 6)]},
@@ -206,13 +208,13 @@ class EventSystem:
                         chain_tag="questline",
                     )
                     self.active_events.append(follow)
-                    return f"Event complete: {event.title}. {impact} Follow-up unlocked: {follow.title}."
+                    return f"Событие завершено: {event.title}. {impact} Открыто продолжение: {follow.title}."
 
                 if event.chain_tag == "questline" and self.rng.random() < 0.45:
                     rival = self._new_event(
                         "isekai",
-                        "Rival Hero Ambush",
-                        "A rival isekai champion appears to challenge your legend.",
+                        "Засада героя-соперника",
+                        "Появляется соперник из исекая и бросает вызов твоей легенде.",
                         event.biome,
                         event.difficulty + 1,
                         {"exp": 65, "rep": 2, "items": [("core", 2), ("gold", 5)]},
@@ -220,9 +222,9 @@ class EventSystem:
                         chain_tag="isekai",
                     )
                     self.active_events.append(rival)
-                    return f"Event complete: {event.title}. {impact} Chain reaction: {rival.title}."
+                    return f"Событие завершено: {event.title}. {impact} Цепная реакция: {rival.title}."
 
-                return f"Event complete: {event.title}. {impact}"
+                return f"Событие завершено: {event.title}. {impact}"
         return None
 
     def update(self, dt: float, player, world, entities) -> list[dict]:
@@ -242,7 +244,7 @@ class EventSystem:
         if trigger and len(self.active_events) < 5:
             new_event = self._generate_template(biome, world.is_night, player.level)
             self.active_events.append(new_event)
-            logs.append({"type": "event", "text": f"New Event: {new_event.title}"})
+            logs.append({"type": "event", "text": f"Новое событие: {new_event.title}"})
             self.next_event_in = self.rng.uniform(2.0, 10.0)
 
         if self.next_flavor_in <= 0:
@@ -256,7 +258,7 @@ class EventSystem:
             event.timer -= dt
             auto_complete_chance = 0.0005 + player.level * 0.00008
             if event.timer <= 0:
-                logs.append({"type": "event", "text": f"Failed: {event.title}"})
+                logs.append({"type": "event", "text": f"Провалено: {event.title}"})
                 continue
             if self.rng.random() < auto_complete_chance:
                 msg = self.complete_event(event.eid, player, world, entities)

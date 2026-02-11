@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 
 import pygame
 
+from localization import localize_entity
 from world import TILE_SIZE
 
 
@@ -77,19 +78,19 @@ class EntityManager:
         self.entities: list[BaseEntity] = []
         self.dialogue_trees = {
             "villager": [
-                "The moon looked purple yesterday...",
-                "Please defend our tiny anime village!",
-                "I heard a dragon sings in the ruins at night.",
+                "Вчера луна была фиолетовой...",
+                "Пожалуйста, защити нашу маленькую деревню!",
+                "Говорят, по ночам в руинах поёт дракон.",
             ],
             "merchant": [
-                "Fresh potions! Rare ore! Waifu figurines!",
-                "Bring me monster cores and I pay in gold.",
-                "A caravan vanished north. Suspicious...",
+                "Свежие зелья! Редкая руда! Лучшие товары!",
+                "Принеси ядра монстров, и я щедро заплачу.",
+                "Караван пропал на севере. Очень странно...",
             ],
             "waifu": [
-                "Senpai, your aura keeps growing!",
-                "I can support your base if you build a home.",
-                "The rival hero challenged your legend.",
+                "Сэмпай, твоя аура становится всё сильнее!",
+                "Я помогу твоей базе, если построишь дом.",
+                "Герой-соперник бросил вызов твоей легенде.",
             ],
         }
         self.faction_relations: dict[tuple[str, str], int] = {
@@ -219,7 +220,7 @@ class EntityManager:
                     player.hp = max(0, player.hp - (6 if ent.faction == "boss" else 3))
             elif ent.state == "social":
                 if dist < 80 and ent.talk_cooldown <= 0 and random.random() < 0.003:
-                    logs.append({"type": "dialogue", "text": f"{ent.etype.title()}: {self.get_talk_line(ent)}"})
+                    logs.append({"type": "dialogue", "text": f"{localize_entity(ent.etype)}: {self.get_talk_line(ent)}"})
                     ent.talk_cooldown = 8.0
             elif ent.state == "assist":
                 target = self.nearest_entity(ent.x, ent.y, 260, faction_filter="monsters")

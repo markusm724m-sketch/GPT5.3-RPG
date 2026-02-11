@@ -171,21 +171,54 @@ class Player:
         bob = math.sin(t * 8) * 2 if (abs(self.vx) + abs(self.vy)) > 0 else 0
         jump_offset = math.sin(max(0.0, self.jump_time) * math.pi * 2) * 12 if self.jump_time > 0 else 0
 
-        body_rect = pygame.Rect(sx + 4, sy + 16 - int(bob) - int(jump_offset), self.w - 8, self.h - 16)
-        pygame.draw.rect(surface, (82, 98, 245), body_rect, border_radius=6)
+        # Аниме-стиль персонажа
+        base_y = sy - int(bob) - int(jump_offset)
 
-        head_pos = (sx + self.w // 2, sy + 10 - int(bob) - int(jump_offset))
-        pygame.draw.circle(surface, (245, 220, 210), head_pos, 9)
-        pygame.draw.circle(surface, (40, 70, 200), (head_pos[0] - 3, head_pos[1] - 1), 2)
-        pygame.draw.circle(surface, (40, 70, 200), (head_pos[0] + 3, head_pos[1] - 1), 2)
+        # Тело (роба)
+        robe_color = (120, 80, 200) if not self.cheat_mode else (200, 180, 80)
+        pygame.draw.ellipse(surface, robe_color, (sx + 6, base_y + 20, 12, 18))
+        pygame.draw.ellipse(surface, (robe_color[0]-20, robe_color[1]-20, robe_color[2]-20), (sx + 8, base_y + 22, 8, 14))
 
+        # Руки
+        pygame.draw.ellipse(surface, (245, 220, 210), (sx + 2, base_y + 24, 6, 10))
+        pygame.draw.ellipse(surface, (245, 220, 210), (sx + 16, base_y + 24, 6, 10))
+
+        # Голова
+        head_pos = (sx + self.w // 2, base_y + 12)
+        pygame.draw.ellipse(surface, (245, 220, 210), (head_pos[0] - 8, head_pos[1] - 8, 16, 14))
+
+        # Глаза
+        eye_color = (40, 70, 200)
+        pygame.draw.ellipse(surface, eye_color, (head_pos[0] - 5, head_pos[1] - 2, 3, 4))
+        pygame.draw.ellipse(surface, eye_color, (head_pos[0] + 2, head_pos[1] - 2, 3, 4))
+        # Блики в глазах
+        pygame.draw.circle(surface, (255, 255, 255), (head_pos[0] - 4, head_pos[1] - 1), 1)
+        pygame.draw.circle(surface, (255, 255, 255), (head_pos[0] + 3, head_pos[1] - 1), 1)
+
+        # Рот
+        pygame.draw.arc(surface, (200, 100, 100), (head_pos[0] - 2, head_pos[1] + 1, 4, 3), 0, math.pi, 1)
+
+        # Волосы (аниме-стиль)
         hair_color = (180, 80, 240) if not self.cheat_mode else (240, 230, 90)
-        pygame.draw.line(surface, hair_color, (head_pos[0] - 8, head_pos[1] - 7), (head_pos[0], head_pos[1] - 12), 3)
-        pygame.draw.line(surface, hair_color, (head_pos[0], head_pos[1] - 12), (head_pos[0] + 8, head_pos[1] - 7), 3)
+        # Основные волосы
+        pygame.draw.ellipse(surface, hair_color, (head_pos[0] - 9, head_pos[1] - 10, 18, 12))
+        # Прядки
+        pygame.draw.ellipse(surface, hair_color, (head_pos[0] - 10, head_pos[1] - 8, 6, 8))
+        pygame.draw.ellipse(surface, hair_color, (head_pos[0] + 4, head_pos[1] - 8, 6, 8))
 
-        fx = int(head_pos[0] + self.facing.x * 13)
-        fy = int(head_pos[1] + self.facing.y * 13)
-        pygame.draw.line(surface, (255, 220, 120), head_pos, (fx, fy), 2)
+        # Ноги
+        leg_color = (60, 40, 120)
+        pygame.draw.ellipse(surface, leg_color, (sx + 8, base_y + 32, 4, 8))
+        pygame.draw.ellipse(surface, leg_color, (sx + 12, base_y + 32, 4, 8))
+
+        # Обувь
+        pygame.draw.ellipse(surface, (40, 30, 60), (sx + 7, base_y + 38, 6, 4))
+        pygame.draw.ellipse(surface, (40, 30, 60), (sx + 11, base_y + 38, 6, 4))
+
+        # Эффект ауры при чит-режиме
+        if self.cheat_mode:
+            aura_color = (255, 225, 110, 100)
+            pygame.draw.ellipse(surface, aura_color, (sx - 2, base_y - 2, self.w + 4, self.h + 4), 2)
 
     def to_dict(self) -> dict:
         return {

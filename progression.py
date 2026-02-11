@@ -8,44 +8,44 @@ from dataclasses import dataclass, field
 
 SKILL_DEFS = {
     "blade_mastery": {
-        "name": "Blade Mastery",
-        "desc": "+15% melee damage per rank",
+        "name": "Мастерство клинка",
+        "desc": "+15% урона в ближнем бою за ранг",
         "max_rank": 5,
         "cost": 1,
     },
     "arcane_flow": {
-        "name": "Arcane Flow",
-        "desc": "+10 mana regen per rank",
+        "name": "Поток арканы",
+        "desc": "+10 к восстановлению маны за ранг",
         "max_rank": 5,
         "cost": 1,
     },
     "dash_step": {
-        "name": "Dash Step",
-        "desc": "Lower dash cooldown",
+        "name": "Рывок",
+        "desc": "Снижает перезарядку рывка",
         "max_rank": 3,
         "cost": 1,
     },
     "summon_bond": {
-        "name": "Summon Bond",
-        "desc": "Stronger minions and summon duration",
+        "name": "Связь призыва",
+        "desc": "Усиляет призванных и длительность призыва",
         "max_rank": 4,
         "cost": 2,
     },
     "isekai_blessing": {
-        "name": "Isekai Blessing",
-        "desc": "+HP/+Mana growth on level up",
+        "name": "Благословение исекая",
+        "desc": "+HP/+мана при повышении уровня",
         "max_rank": 3,
         "cost": 2,
     },
     "merchant_aura": {
-        "name": "Merchant Aura",
-        "desc": "Better trading rates",
+        "name": "Аура торговца",
+        "desc": "Более выгодная торговля",
         "max_rank": 3,
         "cost": 1,
     },
     "night_hunter": {
-        "name": "Night Hunter",
-        "desc": "Bonus damage and speed at night",
+        "name": "Ночной охотник",
+        "desc": "Бонус к урону и скорости ночью",
         "max_rank": 3,
         "cost": 2,
     },
@@ -83,7 +83,7 @@ class ProgressionSystem:
         self.skill_points += 1
         if new_level % 3 == 0:
             self.gold += 20
-            logs.append("Milestone reached: guild stipend +20 gold")
+            logs.append("Этап пройден: жалование гильдии +20 золота")
         return logs
 
     def try_upgrade_skill(self, skill_id: str) -> bool:
@@ -130,12 +130,13 @@ class ProgressionSystem:
 
     def tick_companions(self, dt: float, is_night: bool) -> list[str]:
         logs: list[str] = []
+        mood_names = {"happy": "счастливой", "inspired": "вдохновлённой", "playful": "игривой"}
         for c in self.companions:
             if random.random() < 0.002 * dt * 60:
                 c.loyalty = min(100, c.loyalty + 1)
             if is_night and c.role == "waifu" and random.random() < 0.001 * dt * 60:
                 c.mood = random.choice(["happy", "inspired", "playful"])
-                logs.append(f"{c.name} feels {c.mood} under the moonlight.")
+                logs.append(f"{c.name} чувствует себя {mood_names.get(c.mood, c.mood)} под луной.")
         return logs
 
     def get_modifiers(self, is_night: bool) -> dict[str, float]:
@@ -203,7 +204,7 @@ class ProgressionSystem:
             self.companions.append(
                 Companion(
                     cid=item.get("cid", 0),
-                    name=item.get("name", "Companion"),
+                    name=item.get("name", "Спутник"),
                     role=item.get("role", "villager"),
                     level=item.get("level", 1),
                     hp=item.get("hp", 80),
