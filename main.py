@@ -11,11 +11,12 @@ from combat import CombatSystem
 from crafting import CraftingSystem
 from entities import EntityManager
 from events import EventSystem
+from localization import localize_biome, localize_item, localize_role, localize_skill
 from player import Player
 from progression import ProgressionSystem
 from ui import UIManager
 from utils import Camera, ParticleSystem, load_json, save_json
-from visuals import AuraRenderer, DamageNumberSystem, RuneCircleRenderer, SkyRenderer, WeatherRenderer
+from visuals import AuraRenderer, DamageNumberSystem, PostProcessing, RuneCircleRenderer, SkyRenderer, WeatherRenderer
 from world import TILE_SIZE, World
 
 WIDTH, HEIGHT = 800, 600
@@ -48,7 +49,7 @@ def load_game(player: Player, world: World, events: EventSystem, progression: Pr
 
 def main() -> None:
     pygame.init()
-    pygame.display.set_caption("Isekai Sandbox Prototype")
+    pygame.display.set_caption("Исекай-песочница")
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("consolas", 16)
@@ -65,18 +66,19 @@ def main() -> None:
     ui = UIManager()
     camera = Camera(WIDTH, HEIGHT)
     particles = ParticleSystem()
-    sky = SkyRenderer()
+    sky = SkyRenderer(seed=world.seed + 17)
     weather_fx = WeatherRenderer(seed=world.seed + 543)
     aura_fx = AuraRenderer()
     rune_fx = RuneCircleRenderer()
     dmg_numbers = DamageNumberSystem()
+    post_fx = PostProcessing()
 
     build_mode = False
     running = True
     time_acc = 0.0
 
-    ui.notify("Welcome, weak isekai traveler. Grow into an OP legend.", (255, 215, 160), ttl=5)
-    ui.notify("Controls: WASD/Arrows move, Space jump, Shift dash, LMB slash, RMB fireball", (210, 230, 255), ttl=6)
+    ui.notify("Добро пожаловать, странник исекая. Стань легендой.", (255, 215, 160), ttl=5)
+    ui.notify("Управление: WASD/стрелки - движение, Space - прыжок, Shift - рывок, ЛКМ - удар, ПКМ - огненный шар", (210, 230, 255), ttl=6)
 
     while running:
         dt = clock.tick(FPS) / 1000.0
@@ -96,7 +98,7 @@ def main() -> None:
                     ui.show_inventory = ui.show_crafting or ui.show_inventory
                 elif event.key == pygame.K_b:
                     build_mode = not build_mode
-                    ui.notify(f"Build mode: {'ON' if build_mode else 'OFF'}", (180, 255, 210))
+                    ui.notify(f"Режим строительства: {'ВКЛ' if build_mode else 'ВЫКЛ'}", (180, 255, 210))
                 elif event.key == pygame.K_TAB:
                     ui.show_event_panel = not ui.show_event_panel
                 elif event.key == pygame.K_SPACE:
@@ -106,10 +108,10 @@ def main() -> None:
                     player.trigger_dash(cooldown_scale=max(0.5, 1.0 - mods["dash_cdr"]))
                 elif event.key == pygame.K_f:
                     if player.cast_time_slow():
-                        ui.notify("Time Slow activated", (160, 210, 255))
+                        ui.notify("Замедление времени активировано", (160, 210, 255))
                 elif event.key == pygame.K_e:
                     if player.use_cheat_fruit():
-                        ui.notify("Cheat Fruit consumed! OP aura awakened.", (255, 235, 120), ttl=5)
+                        ui.notify("Чит-фрукт съеден! Пробуждена мощная аура.", (255, 235, 120), ttl=5)
                 elif event.key == pygame.K_g:
                     if events_system.active_events:
                         message = events_system.complete_event(events_system.active_events[0].eid, player, world, entities)
@@ -117,63 +119,64 @@ def main() -> None:
                             ui.notify(message, (250, 220, 255), ttl=6)
                 elif event.key == pygame.K_RETURN and ui.show_crafting:
                     if crafting.craft_selected(player):
-                        ui.notify("Craft successful!", (170, 255, 190))
+                        ui.notify("Предмет создан!", (170, 255, 190))
                     else:
-                        ui.notify("Missing ingredients.", (255, 160, 160))
+                        ui.notify("Не хватает ресурсов.", (255, 160, 160))
                 elif event.key == pygame.K_UP and ui.show_crafting:
                     crafting.selected_recipe = (crafting.selected_recipe - 1) % len(crafting.recipes)
                 elif event.key == pygame.K_DOWN and ui.show_crafting:
                     crafting.selected_recipe = (crafting.selected_recipe + 1) % len(crafting.recipes)
                 elif event.key == pygame.K_F5:
                     save_game(player, world, events_system, progression)
-                    ui.notify("Game saved.", (180, 230, 255))
+                    ui.notify("Игра сохранена.", (180, 230, 255))
                 elif event.key == pygame.K_F9:
                     if load_game(player, world, events_system, progression):
-                        ui.notify("Game loaded.", (180, 230, 255))
+                        ui.notify("Игра загружена.", (180, 230, 255))
                     else:
-                        ui.notify("No save found.", (255, 170, 170))
+                        ui.notify("Сохранение не найдено.", (255, 170, 170))
                 elif event.key == pygame.K_p:
                     ui.show_progression = not ui.show_progression
                 elif event.key == pygame.K_u:
                     for sid, rank in progression.skill_ranks.items():
                         if rank < 3 and progression.try_upgrade_skill(sid):
-                            ui.notify(f"Skill upgraded: {sid}", (210, 250, 180))
+                            ui.notify(f"Навык улучшен: {localize_skill(sid)}", (210, 250, 180))
                             break
                 elif event.key == pygame.K_j:
                     c = progression.hire_companion("villager")
                     if c:
-                        ui.notify(f"Companion hired: {c.name} ({c.role})", (240, 220, 255))
+                        ui.notify(f"Нанят спутник: {c.name} ({localize_role(c.role)})", (240, 220, 255))
                     else:
-                        ui.notify("Not enough gold to hire villager companion.", (255, 170, 170))
+                        ui.notify("Недостаточно золота, чтобы нанять жителя.", (255, 170, 170))
                 elif event.key == pygame.K_k:
                     c = progression.hire_companion("merchant")
                     if c:
-                        ui.notify(f"Companion hired: {c.name} ({c.role})", (240, 220, 255))
+                        ui.notify(f"Нанят спутник: {c.name} ({localize_role(c.role)})", (240, 220, 255))
                     else:
-                        ui.notify("Not enough gold to hire merchant companion.", (255, 170, 170))
+                        ui.notify("Недостаточно золота, чтобы нанять торговца.", (255, 170, 170))
                 elif event.key == pygame.K_l:
                     c = progression.hire_companion("waifu")
                     if c:
-                        ui.notify(f"Companion hired: {c.name} ({c.role})", (255, 205, 240))
+                        ui.notify(f"Нанят спутник: {c.name} ({localize_role(c.role)})", (255, 205, 240))
                     else:
-                        ui.notify("Not enough gold to hire waifu companion.", (255, 170, 170))
+                        ui.notify("Недостаточно золота, чтобы нанять спутницу.", (255, 170, 170))
                 elif event.key == pygame.K_r:
                     if player.mana >= 25:
                         player.mana -= 25
                         summon_type = random.choice(["spirit", "wolf_ally", "knight"])
                         ally = entities.summon_ally(player.x + random.randint(-35, 35), player.y + random.randint(-35, 35), summon_type)
                         particles.emit_burst(ally.x, ally.y, 18, (190, 200, 255), 90, 0.55)
-                        ui.notify(f"Summoned ally: {summon_type}", (190, 220, 255))
+                        ui.notify(f"Призван союзник: {localize_role(summon_type)}", (190, 220, 255))
                     else:
-                        ui.notify("Not enough mana to summon ally.", (255, 160, 160))
+                        ui.notify("Недостаточно маны для призыва союзника.", (255, 160, 160))
                 elif event.key == pygame.K_t:
                     slot = player.hotbar[player.selected_hotbar]
                     if slot:
                         sold = progression.sell_loot(slot.get("id", "wood"), 1)
+                        item_name = localize_item(slot.get("id", "wood"))
                         slot["count"] -= 1
                         if slot["count"] <= 0:
                             slot.clear()
-                        ui.notify(f"Sold item for {sold} gold", (255, 225, 130))
+                        ui.notify(f"Продано: {item_name} за {sold} золота", (255, 225, 130))
                 elif pygame.K_0 <= event.key <= pygame.K_9:
                     number = (event.key - pygame.K_1) % 10
                     player.selected_hotbar = number
@@ -186,10 +189,10 @@ def main() -> None:
                     tx, ty = building.world_tile_from_mouse(event.pos, camera)
                     if event.button == 1:
                         if building.place_block(player, world, tx, ty):
-                            ui.notify("Placed wall block", (180, 240, 200))
+                            ui.notify("Блок стены установлен", (180, 240, 200))
                     elif event.button == 3:
                         if building.remove_block(player, world, tx, ty):
-                            ui.notify("Removed wall block", (240, 210, 170))
+                            ui.notify("Блок стены убран", (240, 210, 170))
                 else:
                     if event.button == 1:
                         mods = progression.get_modifiers(world.is_night)
@@ -199,7 +202,7 @@ def main() -> None:
                     elif event.button == 3:
                         mods = progression.get_modifiers(world.is_night)
                         if combat.cast_projectile(player, "fireball", particles, power_mult=mods["melee_mul"]):
-                            ui.notify("Fireball!", (255, 190, 140))
+                            ui.notify("Огненный шар!", (255, 190, 140))
 
         if not ui.paused:
             keys = pygame.key.get_pressed()
@@ -255,15 +258,14 @@ def main() -> None:
             if player.hp <= 0:
                 player.hp = player.hp_max
                 player.x, player.y = 180, 180
-                ui.notify("You were defeated... but isekai gods rewind your fate.", (255, 120, 140), ttl=5)
+                ui.notify("Вы были повержены... но боги исекая вернули вас назад.", (255, 120, 140), ttl=5)
 
         camera.update(player.x + player.w / 2, player.y + player.h / 2)
 
         # Draw
         screen.fill((16, 14, 24))
         sky.draw(screen, world.time_of_day)
-        weather_fx.draw(screen, world.weather)
-        world.draw(screen, camera, WIDTH, HEIGHT)
+        world.draw(screen, camera, WIDTH, HEIGHT, focus_world=player.center)
         entities.draw(screen, camera)
         combat.draw(screen, camera)
         player.draw(screen, camera, time_acc)
@@ -271,10 +273,16 @@ def main() -> None:
         rune_fx.draw(screen, camera, player.center[0], player.center[1], active=player.time_slow > 0)
         combat.draw_melee_arc(screen, camera, player)
         particles.draw(screen, camera)
+        weather_fx.draw(screen, world.weather)
         dmg_numbers.draw(screen, camera, font)
 
         if build_mode and not ui.show_inventory:
             building.draw_preview(screen, camera, world, pygame.mouse.get_pos())
+
+        # Apply post-processing
+        post_fx.apply_bloom(screen)
+        post_fx.apply_vignette(screen)
+        post_fx.apply_color_grading(screen, world.time_of_day, world.weather)
 
         # UI layers
         ui.draw_bars(screen, player, font)
@@ -284,9 +292,10 @@ def main() -> None:
         ui.draw_notifications(screen, font, WIDTH)
         ui.draw_progression_panel(screen, font, progression)
 
-        info = f"Biome: {world.biome_at(int(player.x // TILE_SIZE), int(player.y // TILE_SIZE))} | Time: {world.time_of_day:05.2f}"
+        biome_name = localize_biome(world.biome_at(int(player.x // TILE_SIZE), int(player.y // TILE_SIZE)))
+        info = f"Биом: {biome_name} | Время: {world.time_of_day:05.2f}"
         screen.blit(font.render(info, True, (235, 235, 245)), (10, HEIGHT - 24))
-        screen.blit(font.render(f"Gold: {progression.gold} | Companions: {len(progression.companions)}", True, (255, 225, 130)), (10, HEIGHT - 44))
+        screen.blit(font.render(f"Золото: {progression.gold} | Спутники: {len(progression.companions)}", True, (255, 225, 130)), (10, HEIGHT - 44))
 
         if ui.show_inventory:
             crafting.draw(screen, player, font, x=20, y=100, show_crafting=ui.show_crafting)
